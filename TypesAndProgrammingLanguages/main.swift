@@ -7,5 +7,19 @@
 
 import Foundation
 
-print("Hello, World!")
+let chapters: [Runnable] = [
+  Chapter04(),
+  Chapter07(),
+]
 
+func run(_ chapter: Runnable) {
+  run([chapter])
+}
+
+func run(_ chapters: [Runnable] = chapters) {
+  chapters.forEach { $0.main() }
+}
+
+run(
+//  Chapter07()
+)
