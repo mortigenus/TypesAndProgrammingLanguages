@@ -43,7 +43,7 @@ private struct DeBruijnIndex: RawRepresentable, ExpressibleByIntegerLiteral, Equ
   }
 }
 
-private typealias Context = Array<(VariableName, Binding)>
+private typealias Context = Array<(variable: VariableName, binding: Binding)>
 
 private enum Command {
   case eval(Term)
@@ -62,7 +62,7 @@ private extension VariableName {
   }
 
   func isBound(in context: Context) -> Bool {
-    context.contains { x, _  in x == self }
+    context.contains { $0.variable == self }
   }
 
   func pickName(in context: Context) -> (Context, VariableName) {
@@ -82,23 +82,23 @@ private extension Context {
   }
 
   func name(from index: DeBruijnIndex) -> VariableName {
-    self[index.rawValue].0
+    self[index.rawValue].variable
   }
 }
 
 private extension Term {
   func map(transformVar: (DeBruijnIndex, Int, Int) -> Term) -> Term {
-    func walk(c: Int, t: Term) -> Self {
-      switch t {
+    func walk(cutoff: Int, term: Term) -> Self {
+      switch term {
       case let .variable(x, contextLength: n):
-        return transformVar(x, n, c)
+        return transformVar(x, n, cutoff)
       case let .abstraction(x, t1):
-        return .abstraction(x, walk(c: c + 1, t: t1))
+        return .abstraction(x, walk(cutoff: cutoff + 1, term: t1))
       case let .application(t1, t2):
-        return .application(walk(c: c, t: t1), walk(c: c, t: t2))
+        return .application(walk(cutoff: cutoff, term: t1), walk(cutoff: cutoff, term: t2))
       }
     }
-    return walk(c: 0, t: self)
+    return walk(cutoff: 0, term: self)
   }
 }
 
@@ -110,9 +110,9 @@ private extension Term {
       return "(lambda \(x1). \(t1.description(in: ctx1)))"
     case let .application(t1, t2):
       return "(\(t1.description(in: context)) \(t2.description(in: context)))"
-    case let .variable(i, contextLength: n):
+    case let .variable(x, contextLength: n):
       if context.count == n {
-        return String(describing: context.name(from: i))
+        return String(describing: context.name(from: x))
       } else {
         return "[bad index]"
       }
@@ -127,10 +127,10 @@ private extension Term {
     }
   }
 
-  func substituted(j: Int, s: Term) -> Self {
+  func substituted(at index: DeBruijnIndex, with term: Term) -> Self {
     map { x, n, c in
-      x.rawValue == j + c
-        ? s.shifted(by: c)
+      x == index.shifted(by: c)
+        ? term.shifted(by: c)
         : .variable(x, contextLength: n)
     }
   }
