@@ -135,8 +135,33 @@ private extension Term {
     }
   }
 
+  func substitutedTop(with term: Term) -> Term {
+    self.substituted(at: 0, with: term.shifted(by: 1)).shifted(by: -1)
+  }
+
+  func isValue(in context: Context) -> Bool {
+    if case .abstraction = self {
+      return true
+    } else {
+      return false
+    }
+  }
+
+  func eval1(in context: Context) throws -> Term {
+    switch self {
+    case let .application(.abstraction(_, t12), v2) where v2.isValue(in: context):
+      return t12.substitutedTop(with: v2)
+    case let .application(v1, t2) where v1.isValue(in: context):
+      return .application(v1, try t2.eval1(in: context))
+    case let .application(t1, t2):
+      return .application(try t1.eval1(in: context), t2)
+    default:
+      throw NoRuleApplies()
+    }
+  }
+
   func eval1() throws -> Term {
-    self
+    try eval1(in: Context.empty())
   }
 
   func evalN() -> Term {
