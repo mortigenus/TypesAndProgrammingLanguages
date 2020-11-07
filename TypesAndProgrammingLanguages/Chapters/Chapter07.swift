@@ -43,14 +43,14 @@ private struct DeBruijnIndex: RawRepresentable, ExpressibleByIntegerLiteral, Equ
   }
 }
 
-private typealias Context = Array<(variable: VariableName, binding: Binding)>
-
 private enum Command {
   case eval(Term)
   case bind(VariableName, Term)
 }
 
 private indirect enum Term: Equatable, Evaluatable {
+  typealias Context = Array<(variable: VariableName, binding: Binding)>
+
   case variable(DeBruijnIndex, contextLength: Int)
   case abstraction(VariableName, Term)
   case application(Term, Term)
@@ -61,19 +61,19 @@ private extension VariableName {
     VariableName(rawValue: self.rawValue + "'")
   }
 
-  func isBound(in context: Context) -> Bool {
+  func isBound(in context: Term.Context) -> Bool {
     context.contains { $0.variable == self }
   }
 
-  func pickName(in context: Context) -> (Context, VariableName) {
+  func pickName(in context: Term.Context) -> (Term.Context, VariableName) {
     self.isBound(in: context)
       ? self.slightlyModified().pickName(in: context)
       : (context.adding(self), self)
   }
 }
 
-private extension Context {
-  static func empty() -> Context {
+private extension Term.Context {
+  static func empty() -> Self {
     []
   }
 
@@ -160,29 +160,66 @@ private extension Term {
     }
   }
 
-  func eval1() throws -> Term {
-    try eval1(in: Context.empty())
-  }
-
-  func evalN() -> Term {
-    self
+  func evalN(in context: Context) -> Term {
+    guard case let .application(t1, t2) = self else {
+      return self
+    }
+    let t1evaled = t1.evalN(in: context)
+    let t2evaled = t2.evalN(in: context)
+    if case let .abstraction(_, t12) = t1evaled, t2evaled.isValue(in: context) {
+      return t12.substitutedTop(with: t2evaled).evalN(in: context)
+    } else {
+      return self
+    }
   }
 }
 
 // Specialized assert to omit writing `Term.` every time.
 private func assert(_ term: Term, evaluatesTo: Term, file: StaticString = #file, line: UInt = #line) {
-  assert(value: term, evaluatesTo: evaluatesTo, file: file, line: line)
+  assert(value: term, evaluatesTo: evaluatesTo, in: .empty(), file: file, line: line)
 }
 
 struct Chapter07: Runnable {
   func main() {
-    print(Term
-            .abstraction(
-              "x",
-              .application(
-                .variable(0, contextLength: 3),
-                .variable(1, contextLength: 3)))
-            .description(in: Context.empty().adding("x").adding("x'")))
+    assert(
+      .variable(0, contextLength: 1),
+      evaluatesTo: .variable(0, contextLength: 1)
+    )
+
+    assert(
+      .abstraction("x", .variable(0, contextLength: 1)),
+      evaluatesTo: .abstraction("x", .variable(0, contextLength: 1))
+    )
+
+    assert(
+      .application(
+        .variable(0, contextLength: 2),
+        .variable(1, contextLength: 2)),
+      evaluatesTo: .application(
+        .variable(0, contextLength: 2),
+        .variable(1, contextLength: 2)))
+
+    assert(
+      .application(
+        .abstraction("x1", .variable(0, contextLength: 2)),
+        .abstraction("x2", .variable(1, contextLength: 2))),
+      evaluatesTo: .abstraction("x2", .variable(1, contextLength: 2)))
+
+    assert(
+      .application(
+        .application(
+          .abstraction("x", .variable(0, contextLength: 1)),
+          .abstraction(
+            "x",
+            .application(
+              .variable(0, contextLength: 1),
+              .variable(0, contextLength: 1)))),
+        .abstraction(
+          "y",
+          Term.application(
+            .abstraction("x", .variable(0, contextLength: 2)),
+            .abstraction("x", .variable(0, contextLength: 2))))),
+      evaluatesTo: .abstraction("x", .variable(0, contextLength: 1)))
   }
 }
 

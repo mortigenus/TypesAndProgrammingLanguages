@@ -17,7 +17,7 @@ func run(_ chapter: Runnable) {
 }
 
 func run(_ chapters: [Runnable] = chapters) {
-  chapters.forEach { $0.main() }
+  chapters.forEach { $0.main(); print("✅ \($0)") }
 }
 
 run(

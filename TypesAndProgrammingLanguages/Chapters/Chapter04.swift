@@ -9,6 +9,8 @@ import Foundation
 
 
 private indirect enum Term: Equatable, Evaluatable {
+  typealias Context = Void
+
   case `true`
   case `false`
   case `if`(Term, Term, Term)
@@ -37,55 +39,55 @@ private indirect enum Term: Equatable, Evaluatable {
     }
   }
 
-  func eval1() throws -> Term {
+  func eval1(in context: Context) throws -> Term {
     switch self {
     case let .if(.true, t2, _):
       return t2
     case let .if(.false, _, t3):
       return t3
     case let .if(t1, t2, t3):
-      return .if(try t1.eval1(), t2, t3)
+      return .if(try t1.eval1(in: context), t2, t3)
     case let .succ(t1):
-      return .succ(try t1.eval1())
+      return .succ(try t1.eval1(in: context))
     case .pred(.zero):
       return .zero
     case let .pred(.succ(nv1)) where nv1.isNumericValue():
       return nv1
     case let .pred(t1):
-      return .pred(try t1.eval1())
+      return .pred(try t1.eval1(in: context))
     case .isZero(.zero):
       return .true
     case let .isZero(.succ(nv1)) where nv1.isNumericValue():
       return .false
     case let .isZero(t1):
-      return .isZero(try t1.eval1())
+      return .isZero(try t1.eval1(in: context))
     default:
       throw NoRuleApplies()
     }
   }
 
-  func evalN() -> Term {
+  func evalN(in context: Context) -> Term {
     switch self {
     case .true, .false, .zero:
       return self
     case let .if(t1, t2, t3):
-      let evaled = t1.evalN()
+      let evaled = t1.evalN(in: context)
       if evaled == .true {
-        return t2.evalN()
+        return t2.evalN(in: context)
       } else if evaled == .false {
-        return t3.evalN()
+        return t3.evalN(in: context)
       } else {
         return self
       }
     case let .succ(t1):
-      let evaled = t1.evalN()
+      let evaled = t1.evalN(in: context)
       if evaled.isNumericValue() {
         return .succ(evaled)
       } else {
         return self
       }
     case let .pred(t1):
-      let evaled = t1.evalN()
+      let evaled = t1.evalN(in: context)
       if evaled == .zero {
         return .zero
       } else if case let .succ(nv1) = evaled, nv1.isNumericValue() {
@@ -94,7 +96,7 @@ private indirect enum Term: Equatable, Evaluatable {
         return .pred(evaled)
       }
     case let .isZero(t1):
-      let evaled = t1.evalN()
+      let evaled = t1.evalN(in: context)
       if evaled == .zero {
         return .true
       } else if case .succ(_) = evaled {
@@ -108,7 +110,7 @@ private indirect enum Term: Equatable, Evaluatable {
 
 // Specialized assert to omit writing `Term.` every time.
 private func assert(_ term: Term, evaluatesTo: Term, file: StaticString = #file, line: UInt = #line) {
-  assert(value: term, evaluatesTo: evaluatesTo, file: file, line: line)
+  assert(value: term, evaluatesTo: evaluatesTo, in: (), file: file, line: line)
 }
 
 struct Chapter04: Runnable {
@@ -156,8 +158,6 @@ struct Chapter04: Runnable {
     assert(.isZero(.succ(.zero)), evaluatesTo: .false)
     assert(.isZero(.succ(.succ(.zero))), evaluatesTo: .false)
     assert(.isZero(.succ(.pred(.succ(.pred(.pred(.zero)))))), evaluatesTo: .false)
-
-    print("✅ Chapter04")
   }
 }
 
