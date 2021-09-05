@@ -216,7 +216,7 @@ struct Chapter07: Runnable {
               .variable(0, contextLength: 1)))),
         .abstraction(
           "y",
-          Term.application(
+          .application(
             .abstraction("x", .variable(0, contextLength: 2)),
             .abstraction("x", .variable(0, contextLength: 2))))),
       evaluatesTo: .abstraction("x", .variable(0, contextLength: 1)))

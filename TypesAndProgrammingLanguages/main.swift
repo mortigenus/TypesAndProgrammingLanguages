@@ -10,6 +10,7 @@ import Foundation
 let chapters: [Runnable] = [
   Chapter04(),
   Chapter07(),
+  Chapter10(),
 ]
 
 func run(_ chapter: Runnable) {
@@ -21,5 +22,5 @@ func run(_ chapters: [Runnable] = chapters) {
 }
 
 run(
-//  Chapter07()
+//  Chapter10()
 )
